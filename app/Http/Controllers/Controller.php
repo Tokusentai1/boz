@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Carbon;
-use Validator;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
+
 
 class Controller extends BaseController
 {
@@ -133,5 +135,92 @@ class Controller extends BaseController
                 "Status" => 200
             ]
         );
+    }
+
+    public function translation(Request $request)
+    {
+        $request->validate([
+            'language' => 'required|string|in:en,ar',
+            'file' => 'required|string|in:categories,sub_categories',
+            'key' => 'required|string',
+            'value' => 'required|string',
+        ]);
+
+        $language = $request->input('language');
+        $file = $request->input('file');
+        $key = $request->input('key');
+        $value = $request->input('value');
+
+        $filePath = resource_path("lang/{$language}/{$file}.php");
+
+        if (!File::exists($filePath)) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        $translations = include $filePath;
+        $translations[$key] = $value;
+
+        $content = '<?php' . PHP_EOL . PHP_EOL . 'return ' . var_export($translations, true) . ';' . PHP_EOL;
+
+        File::put($filePath, $content);
+
+        return response()->json(['success' => 'Translation added successfully']);
+    }
+
+    public function translationProduct(Request $request)
+    {
+        $request->validate([
+            'language' => 'required|string|in:en,ar',
+            'file' => 'required|string|in:products',
+            'name' => 'array',
+            'name.key' => 'required_with:name|string',
+            'name.value' => 'required_with:name|string',
+            'description' => 'array',
+            'description.key' => 'required_with:description|string',
+            'description.value' => 'required_with:description|string',
+        ]);
+
+        $language = $request->input('language');
+        $file = $request->input('file');
+        $name = $request->input('name');
+        $description = $request->input('description');
+
+        $filePath = resource_path("lang/{$language}/{$file}.php");
+
+        if (!File::exists($filePath)) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        $translations = include $filePath;
+
+        if ($file === 'products') {
+            // Ensure the sections exist and are arrays
+            if (!isset($translations['name']) || !is_array($translations['name'])) {
+                $translations['name'] = [];
+            }
+            if (!isset($translations['description']) || !is_array($translations['description'])) {
+                $translations['description'] = [];
+            }
+
+            if ($name) {
+                $translations['name'][$name['key']] = $name['value'];
+            }
+            if ($description) {
+                $translations['description'][$description['key']] = $description['value'];
+            }
+        } else {
+            if ($name) {
+                $translations[$name['key']] = $name['value'];
+            }
+            if ($description) {
+                $translations[$description['key']] = $description['value'];
+            }
+        }
+
+        $content = '<?php' . PHP_EOL . PHP_EOL . 'return ' . var_export($translations, true) . ';' . PHP_EOL;
+
+        File::put($filePath, $content);
+
+        return response()->json(['success' => 'Translation added successfully']);
     }
 }

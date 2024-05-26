@@ -1,5 +1,8 @@
 <?php
-return [
-    'name' => [],
-    'description' => [],
-];
+
+return array(
+  'name' =>
+  array(),
+  'description' =>
+  array(),
+);

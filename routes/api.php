@@ -92,5 +92,11 @@ Route::middleware('changeLanguage')->group(
 
         //api to update the cart this is when user want to add new product or change the quantity we get the cart id and product id and quantity form front end and update the cart
         Route::put('updateCart', [CartController::class, 'updateCart']);
+
+        //api to add translation to category and sub category php file which store the translation 
+        Route::post('translation', [Controller::class, 'translation']);
+
+        //api to add translation to product php file which store the translation
+        Route::post('translationProduct', [Controller::class, 'translationProduct']);
     }
 );

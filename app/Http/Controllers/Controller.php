@@ -32,6 +32,7 @@ class Controller extends BaseController
         } else {
             return response()->json(
                 [
+                    "User" => $user,
                     "Message" => "Logging in user",
                     "Status" => 200
                 ]

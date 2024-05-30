@@ -10,16 +10,20 @@ class CategoryController extends Controller
 
     public function getCategory($limit)
     {
-        $categories = Category::select('id', 'name', 'picture')->limit($limit)->get();
+        $categories = Category::select('id', 'name', 'picture')->paginate($limit);
 
-        foreach ($categories as $category) {
+        $categories->getCollection()->transform(function ($category) {
             $category->name = trans("categories.{$category->name}");
+            $category->picture = "https://bozecommerce.sirv.com/category/" . $category->picture;
+            return $category;
+        });
 
-            $category->picture = Storage::url('category/' . $category->picture);
-        }
+        // Get the next page URL
+        $nextPageUrl = $categories->nextPageUrl();
 
         return response()->json([
-            "Category" => $categories,
+            "Category" => $categories->items(),
+            "nextPageUrl" => $nextPageUrl,
             "Status" => 200,
         ]);
     }
@@ -29,31 +33,30 @@ class CategoryController extends Controller
         $category = Category::find($id);
 
         if (!$category) {
-            return response()->json(
-                [
-                    "message" => "Category not found",
-                    "Status" => 404,
-                ]
-            );
+            return response()->json([
+                "message" => "Category not found",
+                "Status" => 404,
+            ]);
         }
 
-        // Retrieve subcategories with a limit
+        // Retrieve subcategories with pagination
         $subCategories = $category->subCategories()
             ->select('id', 'name', 'picture', 'category_id')
-            ->limit($limit)
-            ->get();
+            ->paginate($limit);
 
-        foreach ($subCategories as $subCategory) {
+        $subCategories->getCollection()->transform(function ($subCategory) {
             $subCategory->name = trans("sub_categories.{$subCategory->name}");
+            $subCategory->picture = "https://bozecommerce.sirv.com/subCategory/" . $subCategory->picture;
+            return $subCategory;
+        });
 
-            $subCategory->image_url = Storage::url('subCategory/' . $subCategory->picture);
-        }
+        // Get the next page URL
+        $nextPageUrl = $subCategories->nextPageUrl();
 
-        return response()->json(
-            [
-                "Sub_Category" => $subCategories,
-                "Status" => 200,
-            ]
-        );
+        return response()->json([
+            "Sub_Category" => $subCategories->items(),
+            "nextPageUrl" => $nextPageUrl,
+            "Status" => 200,
+        ]);
     }
 }

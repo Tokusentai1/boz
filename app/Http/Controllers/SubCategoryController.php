@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\category;
 use App\Models\SubCategory;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 
 
 class SubCategoryController extends Controller
 {
 
-    public function getProduct($id, $limit)
+    public function getProduct($id, $perPage)
     {
         $subCategory = SubCategory::find($id);
 
@@ -20,6 +22,7 @@ class SubCategoryController extends Controller
                     "message" => "Sub Category not found",
                     "Status" => 404,
                 ],
+                404
             );
         }
 
@@ -34,41 +37,33 @@ class SubCategoryController extends Controller
                 'calories',
                 'sub_category_id'
             )
-            ->limit($limit)
-            ->get();
+            ->paginate($perPage);
 
-        foreach ($products as $product) {
+        $nextPageUrl = $products->nextPageUrl();
+
+        $transformedProducts = $products->getCollection()->transform(function ($product) {
             $product->name = trans("products.name.{$product->name}");
             $product->description = trans("products.description.{$product->description}");
-            $product->picture = Storage::url('product/' . $product->picture);
-        }
+            $product->picture = "https://bozecommerce.sirv.com/product/" . $product->picture;
+            return $product;
+        });
 
         return response()->json(
             [
-                "Product" => $products,
+                "Product" => $transformedProducts,
+                "next_page_url" => $nextPageUrl,
                 "Status" => 200,
-            ]
+            ],
+            200
         );
     }
 
-
-    public function getProductCategory($id, $limit)
+    public function getProductCategory($id, $perPage)
     {
         $category = Category::findOrFail($id);
 
         $products = $category->subCategories()
-            ->with(['products' => function ($query) use ($limit) {
-                $query->select(
-                    'id',
-                    'name',
-                    'description',
-                    'picture',
-                    'quantity',
-                    'price',
-                    'calories',
-                    'sub_category_id'
-                )->limit($limit);
-            }])
+            ->with(['products'])
             ->get()
             ->pluck('products')
             ->collapse();
@@ -80,9 +75,21 @@ class SubCategoryController extends Controller
             return $product;
         });
 
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentPageItems = $products->slice(($currentPage - 1) * $perPage, $perPage);
+        $paginator = new LengthAwarePaginator($currentPageItems, $products->count(), $perPage, $currentPage, [
+            'path' => LengthAwarePaginator::resolveCurrentPath(),
+        ]);
+
+        $nextPageUrl = null;
+        if ($paginator->hasMorePages()) {
+            $nextPageUrl = $paginator->nextPageUrl();
+        }
+
         return response()->json(
             [
-                "Category Product" => $products,
+                "Category Product" => $paginator->items(),
+                "Next Page URL" => $nextPageUrl,
                 "Status" => 200,
             ]
         );

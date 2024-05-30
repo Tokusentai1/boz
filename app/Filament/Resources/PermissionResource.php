@@ -45,7 +45,9 @@ class PermissionResource extends Resource
             ])
             ->filters([])
             ->headerActions([])
-            ->actions([])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
             ->bulkActions([]);
     }
 

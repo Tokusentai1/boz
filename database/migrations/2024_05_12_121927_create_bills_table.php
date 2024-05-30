@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('cart_id')->nullable()->constrained('carts')->nullOnDelete();
             $table->string('status')->default('ongoing');
-            $table->timestamp('date');
             $table->timestamps();
         });
     }

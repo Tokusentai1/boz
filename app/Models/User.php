@@ -36,6 +36,8 @@ class User extends Authenticatable implements FilamentUser, HasName
         return ($this->is_admin && (str_ends_with($this->email, '@admin.com') || str_ends_with($this->email, '@superadmin.com')));
     }
 
+    protected $table = 'customers';
+
     protected $fillable = [
         'first_name',
         'last_name',

@@ -85,6 +85,7 @@ class CartController extends Controller
         $totalPrice = $products->sum('total_price');
 
         return response()->json([
+            "Cart_id" => $cart->id,
             "Cart" => $products,
             "TotalPrice" => $totalPrice,
             "Status" => 200
@@ -168,5 +169,52 @@ class CartController extends Controller
             "Message" => 'Cart updated successfully',
             "Status" => 200
         ]);
+    }
+
+    public function removeProduct(Request $request)
+    {
+        // Find the cart
+        $cart = Cart::find($request->cart_id);
+
+        // Check if the cart exists
+        if (!$cart) {
+            return response()->json(
+                [
+                    "Message" => 'Cart not found',
+                    "Status" => 404
+                ]
+            );
+        }
+
+        // Check if the product exists in the cart
+        if (!$cart->products()->where('product_id', $request->product_id)->exists()) {
+            return response()->json(
+                [
+                    "Message" => 'Product not found in the cart',
+                    "Status" => 404
+                ]
+            );
+        }
+
+        // Detach the product from the cart
+        $cart->products()->detach($request->product_id);
+
+        // Check if the cart is empty
+        if ($cart->products()->count() == 0) {
+            $cart->delete();
+            return response()->json(
+                [
+                    "Message" => 'Product removed and cart deleted as it was empty',
+                    "Status" => 200
+                ]
+            );
+        }
+
+        return response()->json(
+            [
+                "Message" => 'Product removed from cart successfully',
+                "Status" => 200
+            ]
+        );
     }
 }

@@ -67,7 +67,7 @@ Route::middleware('changeLanguage')->group(
         Route::get('getBill/{id}', [BillController::class, 'getBill']);
 
         //api to get all product of a specific bill for user when he click on my bills and then choose a bill to see what he ordered we get the id from the frontend and get the products
-        Route::get('getBillProudct/{billID}', [BillController::class, 'getBillProduct']);
+        Route::get('getBillProduct/{billID}', [BillController::class, 'getBillProduct']);
 
         //api to make bill we do this by getting the id of the cart and user from front end when user click on checkout then we save it in the table  
         Route::post('addBill/{id}', [BillController::class, 'addBill']);
@@ -92,6 +92,9 @@ Route::middleware('changeLanguage')->group(
 
         //api to update the cart this is when user want to add new product or change the quantity we get the cart id and product id and quantity form front end and update the cart
         Route::put('updateCart', [CartController::class, 'updateCart']);
+
+        //api to update the cart this is when user want to remove the product from cart we get the cart id and product id and quantity form front end and update the cart by removing the product
+        Route::put('removeProductFromCart', [CartController::class, 'removeProduct']);
 
         //api to add translation to category and sub category php file which store the translation 
         Route::post('translation', [Controller::class, 'translation']);

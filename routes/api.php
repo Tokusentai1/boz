@@ -28,16 +28,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::middleware('changeLanguage')->group(
     function () {
         //api get all categories this is when the user open the app
-        Route::get('getCategory/{limit}', [CategoryController::class, 'getCategory']);
+        Route::get('getCategory/{index?}/{limit?}', [CategoryController::class, 'getCategory']);
 
         //api get all sub categories this is when the user select a category we get the id from the frontend and get all subcategory from that id
-        Route::get('getSubCategory/{id}/{limit}', [CategoryController::class, 'getSubCategory']);
+        Route::get('getSubCategory/{id}/{index?}/{limit?}', [CategoryController::class, 'getSubCategory']);
 
         //api get all product this is when the user select a sub category we get the id from frontend and get all product of that sub category
-        Route::get('getProduct/{id}/{limit}', [SubCategoryController::class, 'getProduct']);
+        Route::get('getProduct/{id}/{index?}/{limit?}', [SubCategoryController::class, 'getProduct']);
 
         //api get all product this is when the user select a category we get the id from frontend and get all product of that category
-        Route::get('getProductCategory/{id}/{limit}', [SubCategoryController::class, 'getProductCategory']);
+        Route::get('getProductCategory/{id}/{index?}/{limit?}', [SubCategoryController::class, 'getProductCategory']);
 
         //api get user address this is when the user select address tab we get the id from frontend and get the address of that user
         Route::get('getAddress/{id}', [AddressController::class, 'getAddress']);

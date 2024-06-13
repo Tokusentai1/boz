@@ -3,32 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\category;
-use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
-
-    public function getCategory($limit)
+    public function getCategory($index = null, $limit = null)
     {
-        $categories = Category::select('id', 'name', 'picture')->paginate($limit);
+        // Retrieve all categories if $limit is not provided
+        if (!$limit) {
+            $categories = Category::select('id', 'name', 'picture')->get();
+        } else {
+            $query = Category::select('id', 'name', 'picture');
 
-        $categories->getCollection()->transform(function ($category) {
+            // Handle pagination if $index is provided
+            if ($index !== null) {
+                $query->skip($index);
+            }
+
+            $categories = $query->take($limit)->get();
+        }
+
+        // Transform the categories data
+        $categories->transform(function ($category) {
             $category->name = trans("categories.{$category->name}");
             $category->picture = "https://bozecommerce.sirv.com/category/" . $category->picture;
             return $category;
         });
 
-        // Get the next page URL
-        $nextPageUrl = $categories->nextPageUrl();
+        // Determine if there are more categories to fetch
+        $totalCategories = Category::count();
+        $hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $totalCategories : false;
 
         return response()->json([
-            "Category" => $categories->items(),
-            "nextPageUrl" => $nextPageUrl,
+            "Category" => $categories,
+            "hasMore" => $hasMore,
             "Status" => 200,
         ]);
     }
 
-    public function getSubCategory($id, $limit)
+    public function getSubCategory($id, $index = null, $limit = null)
     {
         $category = Category::find($id);
 
@@ -39,23 +51,30 @@ class CategoryController extends Controller
             ]);
         }
 
-        // Retrieve subcategories with pagination
-        $subCategories = $category->subCategories()
-            ->select('id', 'name', 'picture', 'category_id')
-            ->paginate($limit);
+        $query = $category->subCategories()->select('id', 'name', 'picture', 'category_id');
 
-        $subCategories->getCollection()->transform(function ($subCategory) {
+        // Check if index and limit are provided for pagination
+        if ($index !== null && $limit !== null) {
+            $query->skip($index)->take($limit);
+        }
+
+        // Retrieve subcategories
+        $subCategories = $query->get();
+
+        // Transform the subcategories
+        $subCategories->transform(function ($subCategory) {
             $subCategory->name = trans("sub_categories.{$subCategory->name}");
             $subCategory->picture = "https://bozecommerce.sirv.com/subCategory/" . $subCategory->picture;
             return $subCategory;
         });
 
-        // Get the next page URL
-        $nextPageUrl = $subCategories->nextPageUrl();
+        // Determine if there are more subcategories to fetch
+        $totalSubCategories = $category->subCategories()->count();
+        $hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $totalSubCategories : false;
 
         return response()->json([
-            "Sub_Category" => $subCategories->items(),
-            "nextPageUrl" => $nextPageUrl,
+            "Sub_Category" => $subCategories,
+            "hasMore" => $hasMore,
             "Status" => 200,
         ]);
     }

@@ -16,26 +16,68 @@ class CartController extends Controller
         $user = User::find($request->user_id);
         $product = Product::find($request->product_id);
 
+        if (!$user) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "User not found",
+                    "result" => null,
+                ]
+            );
+        }
+
+        if (!$product) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Product not found",
+                    "result" => null,
+                ]
+            );
+        }
+
         $totalPrice = $request->quantity * $product->price;
         $cart = Cart::create([
             'user_id' => $user->id,
             'totalPrice' => $totalPrice,
         ]);
 
+        if (!$cart) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Failed to create cart",
+                    "result" => null,
+                ]
+            );
+        }
+
         $cart->products()->attach($product->id, ['quantity' => $request->quantity]);
 
         DB::commit();
 
-        return response()->json([
-            "message" => 'Product added to cart',
-            "status" => 201
-        ]);
+        return response()->json(
+            [
+                "success" => true,
+                "statusCode" => 201,
+                "error" => null,
+                "result" => 'Product added to cart',
+            ]
+        );
+
         DB::rollBack();
 
-        return response()->json([
-            "message" => 'Error adding product to cart',
-            "status" => 400
-        ]);
+        return response()->json(
+            [
+                "success" => false,
+                "statusCode" => 400,
+                "error" => "Error adding product to cart",
+                "result" => null,
+            ]
+        );
     }
 
     public function getCart($id)
@@ -45,8 +87,10 @@ class CartController extends Controller
         if (!$user) {
             return response()->json(
                 [
-                    "Message" => 'User not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "User not found",
+                    "result" => null,
                 ]
             );
         }
@@ -56,13 +100,16 @@ class CartController extends Controller
         if (!$cart) {
             return response()->json(
                 [
-                    "Message" => 'Cart not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found",
+                    "result" => null,
                 ]
             );
         }
 
         $products = $cart->products()->select(
+            'cart_product.cart_id',
             'products.id',
             'products.name',
             'products.description',
@@ -71,27 +118,36 @@ class CartController extends Controller
             'products.price'
         )->get()->map(function ($product) {
             return [
+                'cart_id' => $product->pivot->cart_id,
                 'id' => $product->id,
                 'name' => trans("products.name.{$product->name}"),
                 'description' => trans("products.description.{$product->description}"),
                 'picture' => Storage::url('product/' . $product->picture),
                 'quantity' => $product->pivot->quantity,
                 'price' => $product->price,
-                'total_price' => $product->pivot->quantity * $product->price,
             ];
         });
 
         // Calculate the overall total price for the cart
-        $totalPrice = $products->sum('total_price');
+        $totalPrice = $products->sum(function ($product) {
+            return $product['total_price'];
+        });
 
-        return response()->json([
-            "Cart_id" => $cart->id,
-            "Cart" => $products,
-            "TotalPrice" => $totalPrice,
-            "Status" => 200
-        ]);
+        // Append total_price to each product in the result array
+        $products = $products->map(function ($product) use ($totalPrice) {
+            $product['total_price_for_cart'] = $totalPrice;
+            return $product;
+        });
+
+        return response()->json(
+            [
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => $products,
+            ]
+        );
     }
-
 
     public function deleteCart($id)
     {
@@ -100,20 +156,23 @@ class CartController extends Controller
         if (!$cart) {
             return response()->json(
                 [
-                    "Message" => 'Cart not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found",
+                    "result" => null,
                 ]
             );
         }
 
         $cart->products()->detach();
-
         $cart->delete();
 
         return response()->json(
             [
-                "Message" => 'Cart deleted successfully',
-                "Status" => 200
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => 'Cart deleted successfully'
             ]
         );
     }
@@ -123,19 +182,27 @@ class CartController extends Controller
         $cart = Cart::find($request->cart_id);
 
         if (!$cart) {
-            return response()->json([
-                "Message" => 'Cart not found',
-                "Status" => 404
-            ]);
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found",
+                    "result" => null,
+                ]
+            );
         }
 
         $product = Product::find($request->product_id);
 
         if (!$product) {
-            return response()->json([
-                "Message" => 'Product not found',
-                "Status" => 404
-            ]);
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Product not found",
+                    "result" => null,
+                ]
+            );
         }
 
         // Check if the product already exists in the cart
@@ -165,10 +232,14 @@ class CartController extends Controller
         });
         $cart->save();
 
-        return response()->json([
-            "Message" => 'Cart updated successfully',
-            "Status" => 200
-        ]);
+        return response()->json(
+            [
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => 'Cart updated successfully',
+            ]
+        );
     }
 
     public function removeProduct(Request $request)
@@ -180,8 +251,10 @@ class CartController extends Controller
         if (!$cart) {
             return response()->json(
                 [
-                    "Message" => 'Cart not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found",
+                    "result" => null,
                 ]
             );
         }
@@ -190,8 +263,10 @@ class CartController extends Controller
         if (!$cart->products()->where('product_id', $request->product_id)->exists()) {
             return response()->json(
                 [
-                    "Message" => 'Product not found in the cart',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Product not found in the cart",
+                    "result" => null,
                 ]
             );
         }
@@ -204,16 +279,21 @@ class CartController extends Controller
             $cart->delete();
             return response()->json(
                 [
-                    "Message" => 'Product removed and cart deleted as it was empty',
-                    "Status" => 200
+                    "success" => true,
+                    "statusCode" => 200,
+                    "error" => null,
+                    "result" => 'Product removed and cart deleted as it was empty',
+
                 ]
             );
         }
 
         return response()->json(
             [
-                "Message" => 'Product removed from cart successfully',
-                "Status" => 200
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => 'Product removed from cart successfully',
             ]
         );
     }

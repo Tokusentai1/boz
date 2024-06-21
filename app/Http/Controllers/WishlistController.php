@@ -14,23 +14,23 @@ class WishlistController extends Controller
         $user = User::find($request->user_id);
 
         if (!$user) {
-            return response()->json(
-                [
-                    'Message' => 'User not found',
-                    "Status" => 404
-                ]
-            );
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'User not found',
+                'result' => null
+            ]);
         }
 
         $product = Product::find($request->product_id);
 
         if (!$product) {
-            return response()->json(
-                [
-                    "Message" => 'Product not found',
-                    "Status" => 404
-                ]
-            );
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'Product not found',
+                'result' => null
+            ]);
         }
 
         $wishlist = $user->wishlist()->firstOrCreate([]);
@@ -40,20 +40,21 @@ class WishlistController extends Controller
         if ($existingProduct) {
             $wishlist->products()->detach($request->product_id);
 
-            return response()->json(
-                [
-                    "Message" => 'Product removed from wishlist',
-                    "Status" => 200
-                ]
-            );
+            return response()->json([
+                'success' => true,
+                'statusCode' => 200,
+                'error' => null,
+                'result' => 'Product removed from wishlist',
+            ]);
         } else {
-            $wishlist->products()->attach($product, ['quantity' => $request->quantity ?? 1]);
-            return response()->json(
-                [
-                    "Message" => 'Product added to wishlist',
-                    "Status" => 201
-                ],
-            );
+            $wishlist->products()->attach($product);
+
+            return response()->json([
+                'success' => true,
+                'statusCode' => 201,
+                'error' => null,
+                'result' => 'Product added to wishlist',
+            ]);
         }
     }
 
@@ -62,12 +63,12 @@ class WishlistController extends Controller
         $user = User::find($id);
 
         if (!$user) {
-            return response()->json(
-                [
-                    "Message" => 'User not found',
-                    "Status" => 404
-                ]
-            );
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'User not found',
+                'result' => null
+            ]);
         }
 
         $products = [];
@@ -78,7 +79,6 @@ class WishlistController extends Controller
                 'products.name',
                 'products.description',
                 'products.picture',
-                'product_wishlist.quantity',
                 'products.price',
                 'products.calories'
             )->get()->map(function ($product) {
@@ -87,18 +87,17 @@ class WishlistController extends Controller
                     'name' => trans("products.name.{$product->name}"),
                     'description' => trans("products.description.{$product->description}"),
                     'picture' => Storage::url('product/' . $product->picture),
-                    'quantity' => $product->pivot->quantity,
                     'price' => $product->price,
                     'calories' => $product->calories,
                 ];
             })->toArray();
         }
 
-        return response()->json(
-            [
-                "Wishlist" => $products,
-                "Status" => 200
-            ]
-        );
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'error' => null,
+            'result' => $products
+        ]);
     }
 }

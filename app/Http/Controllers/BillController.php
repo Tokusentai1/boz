@@ -12,14 +12,27 @@ class BillController extends Controller
     public function getBill($id)
     {
         $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "User not found",
+                    "result" => null
+                ]
+            );
+        }
+
         return response()->json(
             [
-                "Bill" => $user->bills,
-                "Status" => 200
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => $user->bills
             ]
         );
     }
-
 
     public function getBillProduct($billId)
     {
@@ -28,8 +41,10 @@ class BillController extends Controller
         if (!$bill) {
             return response()->json(
                 [
-                    "Message" => 'Bill not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Bill not found",
+                    "result" => null
                 ]
             );
         }
@@ -39,8 +54,10 @@ class BillController extends Controller
         if (!$cart) {
             return response()->json(
                 [
-                    "Message" => 'Cart not found for the bill',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found for this bill",
+                    "result" => null
                 ]
             );
         }
@@ -60,6 +77,7 @@ class BillController extends Controller
                 'id' => $product->id,
                 'name' => trans("products.name.{$product->name}"),
                 'description' => trans("products.description.{$product->description}"),
+                //edit this here to get the correct url
                 'picture' => Storage::url('product/' . $product->picture),
                 'quantity' => $product->pivot->quantity,
                 'price' => $product->price,
@@ -70,8 +88,10 @@ class BillController extends Controller
 
         return response()->json(
             [
-                "Bill Product" => $billProducts,
-                "Status" => 200
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => $billProducts
             ]
         );
     }
@@ -83,8 +103,10 @@ class BillController extends Controller
         if (!$cart) {
             return response()->json(
                 [
-                    "Message" => 'Cart not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Cart not found",
+                    "result" => null
                 ]
             );
         }
@@ -94,8 +116,10 @@ class BillController extends Controller
         if (!$user) {
             return response()->json(
                 [
-                    "Message" => 'User not found for the cart',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "User not found for this cart",
+                    "result" => null
                 ]
             );
         }
@@ -105,8 +129,10 @@ class BillController extends Controller
         if ($existingBill) {
             return response()->json(
                 [
-                    "Message" => 'A bill already exists for this cart',
-                    "Status" => 400
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "A bill already exists for this cart",
+                    "result" => null
                 ]
             );
         }
@@ -119,15 +145,19 @@ class BillController extends Controller
             $product->quantity -= $quantityInCart;
 
             if ($product->quantity < 0) {
+                // Rollback quantity change if there's not enough inventory
+                $product->quantity += $quantityInCart;
+                $product->save();
+
                 return response()->json(
                     [
-                        "Message" => 'Insufficient product quantity for ' . $product->name,
-                        "Status" => 400
+                        "success" => false,
+                        "statusCode" => 400,
+                        "error" => "Insufficient product quantity for " . $product->name,
+                        "result" => null
                     ]
                 );
             }
-
-            $product->save();
         }
 
         $bill = new Bill();
@@ -137,12 +167,13 @@ class BillController extends Controller
 
         return response()->json(
             [
-                "Message" => 'Bill created successfully',
-                "Status" => 201
+                "success" => true,
+                "statusCode" => 201,
+                "error" => null,
+                "result" => $bill
             ]
         );
     }
-
 
     public function cancelBill($billId)
     {
@@ -151,8 +182,10 @@ class BillController extends Controller
         if (!$bill) {
             return response()->json(
                 [
-                    "Message" => 'Bill not found',
-                    "Status" => 404
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Bill not found",
+                    "result" => null
                 ]
             );
         }
@@ -163,8 +196,10 @@ class BillController extends Controller
         if ($timeDifferenceInMinutes > 15) {
             return response()->json(
                 [
-                    'Message' => 'Cannot cancel bill. Time limit exceeded.',
-                    "Status" => 400
+                    'success' => false,
+                    "statusCode" => 400,
+                    'error' => 'Cannot cancel bill. Time limit exceeded.',
+                    "result" => null
                 ]
             );
         }
@@ -174,8 +209,10 @@ class BillController extends Controller
 
         return response()->json(
             [
-                'Message' => 'Bill canceled successfully',
-                "Status" => 201
+                'success' => true,
+                "statusCode" => 201,
+                'error' => null,
+                'result' => $bill
             ]
         );
     }

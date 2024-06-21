@@ -11,10 +11,25 @@ class AddressController extends Controller
 {
     public function getAddress($id)
     {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "There is no User with this ID " . $id,
+                    "result" => null
+                ]
+            );
+        }
+
         return response()->json(
             [
-                "Address" => User::find($id)->address,
-                "Status" => 200,
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => $user->address
             ]
         );
     }
@@ -32,11 +47,14 @@ class AddressController extends Controller
                 'user_id' => 'required'
             ]
         );
+
         if ($validation->fails()) {
             return response()->json(
                 [
-                    "Message" => $validation->errors(),
-                    "Status" => 400,
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => $validation->errors(),
+                    "result" => null
                 ]
             );
         } else {
@@ -48,10 +66,13 @@ class AddressController extends Controller
             $address->building_number = $request->building_number;
             $address->user_id = $request->user_id;
             $address->save();
+
             return response()->json(
                 [
-                    "Message" => "address added",
-                    "Status" => 201
+                    "success" => true,
+                    "statusCode" => 201,
+                    "error" => null,
+                    "result" => $address
                 ]
             );
         }
@@ -69,36 +90,56 @@ class AddressController extends Controller
                 'building_number' => 'required',
             ]
         );
+
         if ($validation->fails()) {
             return response()->json(
                 [
-                    "Message" => $validation->errors(),
-                    "Status" => 400,
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => $validation->errors(),
+                    "result" => null
                 ]
             );
         } else {
-            $address = Address::where('user_id', '=', $id);
-            $res = $address->update(
-                [
-                    'city' => $request->city,
-                    'block' => $request->block,
-                    'street' => $request->street,
-                    'building' => $request->building,
-                    'building_number' => $request->building_number,
-                ]
-            );
-            if ($res) {
+            $address = Address::where('user_id', $id)->first();
+
+            if (!$address) {
                 return response()->json(
                     [
-                        "Message" => "address updated",
-                        "Status" => 200,
+                        "success" => false,
+                        "statusCode" => 400,
+                        "error" => "There is no address for this user",
+                        "result" => null
+                    ]
+                );
+            }
+
+            $address->city = $request->city;
+            $address->block = $request->block;
+            $address->street = $request->street;
+            $address->building = $request->building;
+            $address->building_number = $request->building_number;
+            $address->save();
+
+            // Retrieve the updated address object
+            $updatedAddress = Address::find($address->id);
+
+            if ($updatedAddress) {
+                return response()->json(
+                    [
+                        "success" => true,
+                        "statusCode" => 200,
+                        "error" => null,
+                        "result" => $updatedAddress
                     ]
                 );
             } else {
                 return response()->json(
                     [
-                        "Message" => 'There is no address for this user',
-                        "Status" => 400,
+                        "success" => false,
+                        "statusCode" => 400,
+                        "error" => "Failed to retrieve updated address",
+                        "result" => null
                     ]
                 );
             }
@@ -107,12 +148,39 @@ class AddressController extends Controller
 
     public function deleteAddress($id)
     {
-        Address::where('user_id', '=', $id)->delete();
-        return response()->json(
-            [
-                "Message" => "Address deleted",
-                "Status" => 200
-            ]
-        );
+        $address = Address::where('user_id', $id)->first();
+
+        if (!$address) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "No address found for this user",
+                    "result" => null
+                ]
+            );
+        }
+
+        $deleted = $address->delete();
+
+        if ($deleted) {
+            return response()->json(
+                [
+                    "success" => true,
+                    "statusCode" => 200,
+                    "error" => null,
+                    "result" => "Address deleted"
+                ]
+            );
+        } else {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Failed to delete address. Please try again later.",
+                    "result" => null
+                ]
+            );
+        }
     }
 }

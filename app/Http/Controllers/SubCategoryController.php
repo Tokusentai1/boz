@@ -18,9 +18,11 @@ class SubCategoryController extends Controller
 
         if (!$subCategory) {
             return response()->json([
-                "message" => "Sub Category not found",
-                "Status" => 404,
-            ], 404);
+                "success" => false,
+                "statusCode" => 404,
+                "error" => "Sub Category not found",
+                "result" => null,
+            ]);
         }
 
         $query = $subCategory->products()
@@ -34,22 +36,20 @@ class SubCategoryController extends Controller
         $products = $query->get();
 
         // Transform the products
-        $transformedProducts = $products->map(function ($product) {
+        $transformedProducts = $products->map(function ($product) use ($index, $limit, $subCategory) {
             $product->name = trans("products.name.{$product->name}");
             $product->description = trans("products.description.{$product->description}");
             $product->picture = "https://bozecommerce.sirv.com/product/" . $product->picture;
+            $product->hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $subCategory->products()->count() : false;
             return $product;
         });
 
-        // Determine if there are more products to fetch
-        $totalProducts = $subCategory->products()->count();
-        $hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $totalProducts : false;
-
         return response()->json([
-            "Product" => $transformedProducts,
-            "hasMore" => $hasMore,
-            "Status" => 200,
-        ], 200);
+            "success" => true,
+            "statusCode" => 200,
+            "error" => null,
+            "result" => $transformedProducts,
+        ]);
     }
 
     public function getProductCategory($id, $index = null, $limit = null)
@@ -58,9 +58,11 @@ class SubCategoryController extends Controller
 
         if (!$category) {
             return response()->json([
-                "message" => "Category not found",
-                "Status" => 404,
-            ], 404);
+                "success" => false,
+                "statusCode" => 404,
+                "error" => "Category not found",
+                "result" => null,
+            ]);
         }
 
         // Get all products related to the category's subcategories
@@ -76,21 +78,19 @@ class SubCategoryController extends Controller
         }
 
         // Transform the products
-        $transformedProducts = $products->map(function ($product) {
+        $transformedProducts = $products->map(function ($product) use ($index, $limit, $category) {
             $product->name = trans("products.name.{$product->name}");
             $product->description = trans("products.description.{$product->description}");
             $product->picture = "https://bozecommerce.sirv.com/product/" . $product->picture;
+            $product->hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $category->subCategories()->with('products')->get()->pluck('products')->collapse()->count() : false;
             return $product;
         });
 
-        // Determine if there are more products to fetch
-        $totalProducts = $category->subCategories()->with('products')->get()->pluck('products')->collapse()->count();
-        $hasMore = ($index !== null && $limit !== null) ? ($index + $limit) < $totalProducts : false;
-
         return response()->json([
-            "Category Product" => $transformedProducts,
-            "hasMore" => $hasMore,
-            "Status" => 200,
-        ], 200);
+            "success" => true,
+            "statusCode" => 200,
+            "error" => null,
+            "result" => $transformedProducts,
+        ]);
     }
 }

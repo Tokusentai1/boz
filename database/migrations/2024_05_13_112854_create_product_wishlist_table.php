@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('product_wishlist', function (Blueprint $table) {
             $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete();
             $table->foreignId('wishlist_id')->nullable()->constrained('wishlists')->nullOnDelete();
-            $table->integer('quantity')->default(1);
         });
     }
 

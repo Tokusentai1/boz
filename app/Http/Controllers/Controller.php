@@ -25,16 +25,20 @@ class Controller extends BaseController
         if (!$user || !Hash::check($request->password, $user->getAuthPassword())) {
             return response()->json(
                 [
-                    "Message" => "No user found",
-                    "Status" => 400
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "No User found with the follwing email and password",
+                    "result" => null
                 ]
             );
         } else {
+            $user->makeHidden('password');
             return response()->json(
                 [
-                    "User" => $user,
-                    "Message" => "Logging in user",
-                    "Status" => 200
+                    "success" => true,
+                    "statusCode" => 200,
+                    "error" => null,
+                    "result" => $user
                 ]
             );
         }
@@ -56,26 +60,53 @@ class Controller extends BaseController
         if ($validation->fails()) {
             return response()->json(
                 [
-                    "Message" => $validation->errors(),
-                    "Status" => 400
-                ]
-            );
-        } else {
-            $user = new User();
-            $user->first_name = $request->first_name;
-            $user->last_name = $request->last_name;
-            $user->email = strtolower($request->email);
-            $user->password = bcrypt($request->password);
-            $user->phone_number = $request->phone_number;
-            $user->save();
-
-            return response()->json(
-                [
-                    "Message" => "User created",
-                    "Status" => 201,
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => $validation->errors(),
+                    "result" => null
                 ]
             );
         }
+
+        if (User::where('email', $request->email)->exists()) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Email already exists",
+                    "result" => null
+                ]
+            );
+        }
+
+        if (User::where('phone_number', $request->phone_number)->exists()) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Phone number already exists",
+                    "result" => null
+                ]
+            );
+        }
+
+        $user = new User();
+        $user->first_name = $request->first_name;
+        $user->last_name = $request->last_name;
+        $user->email = strtolower($request->email);
+        $user->password = bcrypt($request->password);
+        $user->phone_number = $request->phone_number;
+        $user->save();
+
+        $user->makeHidden('password');
+        return response()->json(
+            [
+                "success" => true,
+                "statusCode" => 201,
+                "error" => null,
+                "result" => $user
+            ]
+        );
     }
 
     public function update(Request $request, $id)
@@ -94,46 +125,93 @@ class Controller extends BaseController
         if ($validation->fails()) {
             return response()->json(
                 [
-                    "Message" => $validation->errors(),
-                    "Status" => 400
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => $validation->errors(),
+                    "result" => null
                 ]
             );
-        } else {
-            $user = User::find($id);
-            if ($user) {
-                $user->update(
-                    [
-                        'first_name' => $request->first_name,
-                        'last_name' => $request->last_name,
-                        'email' => strtolower($request->email),
-                        'password' => $request->password,
-                        'phone_number' => $request->phone_number,
-                    ]
-                );
-                return response()->json(
-                    [
-                        "Message" => "User updated",
-                        "Status" => 200,
-                    ]
-                );
-            } else {
-                return response()->json(
-                    [
-                        "Message" => "There is no User with this ID " . $id,
-                        "Status" => 400
-                    ]
-                );
-            }
         }
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "There is no User with this ID " . $id,
+                    "result" => null
+                ]
+            );
+        }
+
+        if (User::where('email', $request->email)->where('id', '!=', $id)->exists()) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Email already exists",
+                    "result" => null
+                ]
+            );
+        }
+
+        if (User::where('phone_number', $request->phone_number)->where('id', '!=', $id)->exists()) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "Phone number already exists",
+                    "result" => null
+                ]
+            );
+        }
+
+        $user->update(
+            [
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => strtolower($request->email),
+                'password' => bcrypt($request->password),
+                'phone_number' => $request->phone_number,
+            ]
+        );
+
+        $user->makeHidden('password');
+
+        return response()->json(
+            [
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => $user
+            ]
+        );
     }
 
     public function delete($id)
     {
-        User::find($id)->delete();
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "There is no User with this ID " . $id,
+                    "result" => null
+                ]
+            );
+        }
+
+        $user->delete();
+
         return response()->json(
             [
-                "Message" => "User deleted",
-                "Status" => 200
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => "User deleted"
             ]
         );
     }

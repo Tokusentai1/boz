@@ -116,27 +116,17 @@ class CartController extends Controller
             'products.picture',
             'cart_product.quantity',
             'products.price'
-        )->get()->map(function ($product) {
+        )->get()->map(function ($product) use ($cart) {
             return [
                 'cart_id' => $product->pivot->cart_id,
                 'id' => $product->id,
                 'name' => trans("products.name.{$product->name}"),
                 'description' => trans("products.description.{$product->description}"),
-                'picture' => Storage::url('product/' . $product->picture),
+                'picture' => 'https://bozecommerce.sirv.com/product/' . $product->picture,
                 'quantity' => $product->pivot->quantity,
                 'price' => $product->price,
+                'total_price_for_cart' => $cart->totalPrice,
             ];
-        });
-
-        // Calculate the overall total price for the cart
-        $totalPrice = $products->sum(function ($product) {
-            return $product['total_price'];
-        });
-
-        // Append total_price to each product in the result array
-        $products = $products->map(function ($product) use ($totalPrice) {
-            $product['total_price_for_cart'] = $totalPrice;
-            return $product;
         });
 
         return response()->json(

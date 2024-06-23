@@ -35,10 +35,44 @@ class WishlistController extends Controller
 
         $wishlist = $user->wishlist()->firstOrCreate([]);
 
-        $existingProduct = $wishlist->products()->where('product_id', $request->product_id)->exists();
+        $wishlist->products()->syncWithoutDetaching($product->id);
 
-        if ($existingProduct) {
-            $wishlist->products()->detach($request->product_id);
+        return response()->json([
+            'success' => true,
+            'statusCode' => 201,
+            'error' => null,
+            'result' => 'Product added to wishlist',
+        ]);
+    }
+
+    public function removeFromWishlist(Request $request)
+    {
+        $user = User::find($request->user_id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'User not found',
+                'result' => null
+            ]);
+        }
+
+        $product = Product::find($request->product_id);
+
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'Product not found',
+                'result' => null
+            ]);
+        }
+
+        $wishlist = $user->wishlist;
+
+        if ($wishlist && $wishlist->products()->where('product_id', $product->id)->exists()) {
+            $wishlist->products()->detach($product->id);
 
             return response()->json([
                 'success' => true,
@@ -46,16 +80,14 @@ class WishlistController extends Controller
                 'error' => null,
                 'result' => 'Product removed from wishlist',
             ]);
-        } else {
-            $wishlist->products()->attach($product);
-
-            return response()->json([
-                'success' => true,
-                'statusCode' => 201,
-                'error' => null,
-                'result' => 'Product added to wishlist',
-            ]);
         }
+
+        return response()->json([
+            'success' => false,
+            'statusCode' => 404,
+            'error' => 'Product not found in wishlist',
+            'result' => null,
+        ]);
     }
 
     public function getWishlist($id)

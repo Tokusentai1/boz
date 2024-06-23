@@ -78,8 +78,10 @@ Route::middleware('changeLanguage')->group(
         //api to get all product that user added to his wishlist we get the id from the front end when user click on my wishlist button
         Route::get('getWishlist/{id}', [WishlistController::class, 'getWishlist']);
 
-        //api to add product to wishlist of user we get the id of user and product from front end then we check if user have a wishlist or not then we also check if product is already in wishlist
+        //api to add product to wishlist of user we get the id of user and product from front end 
         Route::post('addWishlist', [WishlistController::class, 'addToWishlist']);
+        //api to remove product from wishlist we check if user have product in wishlist then remove it
+        Route::delete('removeWishlist', [SubCategoryController::class, 'removeFromWishlist']);
 
         //api to get the cart for a user we get the id from the front end and get the last cart created for that user with the products and their quantity
         Route::get('getCart/{id}', [CartController::class, 'getCart']);

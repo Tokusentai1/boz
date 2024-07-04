@@ -36,6 +36,6 @@ class product extends Model
 
     public function wishlists()
     {
-        return $this->belongsToMany(wishlist::class)->withPivot('quantity');
+        return $this->belongsToMany(wishlist::class);
     }
 }

@@ -73,15 +73,16 @@ Route::middleware('changeLanguage')->group(
         Route::post('addBill/{id}', [BillController::class, 'addBill']);
 
         //api to cancel the bill we do this by checking if the time of the bill is over 15 min if it's over 15 min user can't cancel and if it's not over 15 min user can cancel the bill
-        Route::put('cancelBill/{id}', [BillController::class, 'cancelBill']);
+        Route::post('cancelBill/{id}', [BillController::class, 'cancelBill']);
 
         //api to get all product that user added to his wishlist we get the id from the front end when user click on my wishlist button
         Route::get('getWishlist/{id}', [WishlistController::class, 'getWishlist']);
 
         //api to add product to wishlist of user we get the id of user and product from front end 
         Route::post('addWishlist', [WishlistController::class, 'addToWishlist']);
+
         //api to remove product from wishlist we check if user have product in wishlist then remove it
-        Route::delete('removeWishlist', [SubCategoryController::class, 'removeFromWishlist']);
+        Route::delete('removeWishlist', [WishlistController::class, 'removeFromWishlist']);
 
         //api to get the cart for a user we get the id from the front end and get the last cart created for that user with the products and their quantity
         Route::get('getCart/{id}', [CartController::class, 'getCart']);
@@ -103,5 +104,8 @@ Route::middleware('changeLanguage')->group(
 
         //api to add translation to product php file which store the translation
         Route::post('translationProduct', [Controller::class, 'translationProduct']);
+
+
+        Route::post('/createCart', [CartController::class, 'createCart']);
     }
 );

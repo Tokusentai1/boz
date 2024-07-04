@@ -20,7 +20,7 @@ class wishlist extends Model
 
     public function products()
     {
-        return $this->belongsToMany(product::class)->withPivot('quantity');
+        return $this->belongsToMany(product::class);
     }
 
     public function user()

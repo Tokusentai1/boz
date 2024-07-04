@@ -35,14 +35,25 @@ class WishlistController extends Controller
 
         $wishlist = $user->wishlist()->firstOrCreate([]);
 
-        $wishlist->products()->syncWithoutDetaching($product->id);
+        $existingProduct = $wishlist->products()->where('product_id', $product->id)->exists();
 
-        return response()->json([
-            'success' => true,
-            'statusCode' => 201,
-            'error' => null,
-            'result' => 'Product added to wishlist',
-        ]);
+        if ($existingProduct) {
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'Product already in wishlist',
+                'result' => null,
+            ]);
+        } else {
+            $wishlist->products()->attach($product->id);
+
+            return response()->json([
+                'success' => true,
+                'statusCode' => 201,
+                'error' => null,
+                'result' => 'Product added to wishlist',
+            ]);
+        }
     }
 
     public function removeFromWishlist(Request $request)

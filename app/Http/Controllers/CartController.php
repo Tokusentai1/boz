@@ -85,31 +85,32 @@ class CartController extends Controller
         $user = User::find($id);
 
         if (!$user) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "statusCode" => 404,
-                    "error" => "User not found",
-                    "result" => null,
-                ]
-            );
+            return response()->json([
+                "success" => false,
+                "statusCode" => 404,
+                "error" => "User not found",
+                "result" => null,
+            ]);
         }
 
-        $cart = $user->carts()->orderBy('created_at', 'desc')->first();
+        $cart = $user->carts()->where('active', true)->first();
 
         if (!$cart) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "statusCode" => 404,
-                    "error" => "Cart not found",
-                    "result" => null,
-                ]
-            );
+
+            $response = [
+                "success" => true,
+                "statusCode" => 200,
+                "error" => null,
+                "result" => [
+                    "cart items" => [],
+                    'total price' => 0
+                ],
+            ];
+
+            return response()->json($response);
         }
 
         $products = $cart->products()->select(
-            'cart_product.cart_id',
             'products.id',
             'products.name',
             'products.description',
@@ -118,26 +119,28 @@ class CartController extends Controller
             'products.price'
         )->get()->map(function ($product) use ($cart) {
             return [
-                'cart_id' => $product->pivot->cart_id,
                 'id' => $product->id,
                 'name' => trans("products.name.{$product->name}"),
                 'description' => trans("products.description.{$product->description}"),
                 'picture' => 'https://bozecommerce.sirv.com/product/' . $product->picture,
                 'quantity' => $product->pivot->quantity,
                 'price' => $product->price,
-                'total_price_for_cart' => $cart->totalPrice,
             ];
         });
 
-        return response()->json(
-            [
-                "success" => true,
-                "statusCode" => 200,
-                "error" => null,
-                "result" => $products,
-            ]
-        );
+        $response = [
+            "success" => true,
+            "statusCode" => 200,
+            "error" => null,
+            "result" => [
+                "cart items" => $products,
+                'total price' => $cart->totalPrice
+            ],
+        ];
+
+        return response()->json($response);
     }
+
 
     public function deleteCart($id)
     {
@@ -286,5 +289,87 @@ class CartController extends Controller
                 "result" => 'Product removed from cart successfully',
             ]
         );
+    }
+
+
+    public function createCart(Request $request)
+    {
+        // Retrieve the request parameters
+        $userId = $request->input('user_id');
+        $productIds = $request->input('product_ids');
+        $quantities = $request->input('quantities');
+
+        // Find the user
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'statusCode' => 404,
+                'error' => 'User not found',
+                'result' => null
+            ]);
+        }
+
+        // Check if the user already has an active cart
+        $activeCart = $user->carts()->where('active', true)->first();
+
+        if ($activeCart) {
+            // If the user has an active cart, update it
+            $activeCart->products()->detach(); // Remove all existing products
+            $cart = $activeCart;
+        } else {
+            // If the user does not have an active cart, create a new one
+            $cart = Cart::create([
+                'user_id' => $userId,
+                'totalPrice' => 0, // This will be updated later
+                'active' => true // Set the new cart as active
+            ]);
+        }
+
+        // Initialize the total price
+        $totalPrice = 0;
+
+        // Update the cart with products and quantities
+        $productErrors = [];
+
+        foreach ($productIds as $index => $productId) {
+            $quantity = $quantities[$index];
+            $product = Product::find($productId);
+
+            if (!$product) {
+                $productErrors[] = "Product with ID {$productId} not found";
+                continue;
+            }
+
+            // Calculate the total price for this product
+            $productTotalPrice = $product->price * $quantity;
+
+            // Attach the product to the cart
+            $cart->products()->attach($productId, ['quantity' => $quantity]);
+
+            // Add to the total price of the cart
+            $totalPrice += $productTotalPrice;
+        }
+
+        // Update the total price of the cart
+        $cart->totalPrice = $totalPrice;
+        $cart->save();
+
+        // Check if there were any product errors
+        if (!empty($productErrors)) {
+            return response()->json([
+                'success' => false,
+                'statusCode' => 400,
+                'error' => $productErrors,
+                'result' => 'Some products were not found'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'error' => null,
+            'result' => $activeCart ? 'Cart updated ' . $cart->id : 'Cart created ' . $cart->id,
+        ]);
     }
 }

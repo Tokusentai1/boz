@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\bill;
-use App\Models\cart;
-use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+
 
 class BillController extends Controller
 {
@@ -14,24 +14,36 @@ class BillController extends Controller
         $user = User::find($id);
 
         if (!$user) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "statusCode" => 400,
-                    "error" => "User not found",
-                    "result" => null
-                ]
-            );
+            return response()->json([
+                "success" => false,
+                "statusCode" => 404,
+                "error" => "User not found",
+                "result" => null,
+            ]);
         }
 
-        return response()->json(
-            [
-                "success" => true,
-                "statusCode" => 200,
-                "error" => null,
-                "result" => $user->bills
-            ]
-        );
+        $bills = $user->bills->map(function ($bill) {
+            $cartPrice = $bill->cart->totalPrice;
+            $tax = floor($cartPrice * 0.03);
+            $deliveryPrice = 5000;
+            $totalPrice = $cartPrice + $tax + $deliveryPrice;
+
+            return [
+                'id' => $bill->id,
+                'status' => $bill->status,
+                'price' => $totalPrice,
+                'created_at' => $bill->created_at,
+            ];
+        });
+
+        $response = [
+            "success" => true,
+            "statusCode" => 200,
+            "error" => null,
+            "result" => $bills,
+        ];
+
+        return response()->json($response);
     }
 
     public function getBillProduct($billId)
@@ -72,59 +84,74 @@ class BillController extends Controller
             'products.calories'
         )->get();
 
+        $totalPrice = $cart->totalPrice; // Assuming the column name is 'totalprice'
+
         $billProducts = $products->map(function ($product) use ($bill) {
             return [
                 'id' => $product->id,
                 'name' => trans("products.name.{$product->name}"),
                 'description' => trans("products.description.{$product->description}"),
-                //edit this here to get the correct url
-                'picture' => Storage::url('product/' . $product->picture),
+                'picture' => 'https://bozecommerce.sirv.com/product/' . $product->picture,
                 'quantity' => $product->pivot->quantity,
                 'price' => $product->price,
                 'calories' => $product->calories,
-                'status' => $bill->status,
             ];
         });
 
-        return response()->json(
-            [
-                "success" => true,
-                "statusCode" => 200,
-                "error" => null,
-                "result" => $billProducts
-            ]
-        );
+        $response = [
+            "success" => true,
+            "statusCode" => 200,
+            "error" => null,
+            "result" => [
+                "bill items" => $billProducts,
+                "total_price" => $totalPrice
+            ],
+        ];
+
+        return response()->json($response);
     }
 
-    public function addBill($id)
+
+    public function addBill($userId)
     {
-        $cart = Cart::find($id);
-
-        if (!$cart) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "statusCode" => 404,
-                    "error" => "Cart not found",
-                    "result" => null
-                ]
-            );
-        }
-
-        $user = $cart->user;
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json(
                 [
                     "success" => false,
                     "statusCode" => 404,
-                    "error" => "User not found for this cart",
-                    "result" => null
+                    "error" => "User not found",
+                    "result" => null,
                 ]
             );
         }
 
-        $existingBill = Bill::where('cart_id', $id)->first();
+        if (!$user->address) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 400,
+                    "error" => "User has no address. Please add an address.",
+                    "result" => null,
+                ]
+            );
+        }
+
+        $cart = $user->carts()->where('active', true)->first();
+
+        if (!$cart) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "statusCode" => 404,
+                    "error" => "Active cart not found for this user",
+                    "result" => null,
+                ]
+            );
+        }
+
+        $existingBill = Bill::where('cart_id', $cart->id)->first();
 
         if ($existingBill) {
             return response()->json(
@@ -132,7 +159,7 @@ class BillController extends Controller
                     "success" => false,
                     "statusCode" => 400,
                     "error" => "A bill already exists for this cart",
-                    "result" => null
+                    "result" => null,
                 ]
             );
         }
@@ -154,23 +181,31 @@ class BillController extends Controller
                         "success" => false,
                         "statusCode" => 400,
                         "error" => "Insufficient product quantity for " . $product->name,
-                        "result" => null
+                        "result" => null,
                     ]
                 );
             }
         }
 
         $bill = new Bill();
-        $bill->cart_id = $id;
+        $bill->cart_id = $cart->id;
         $bill->user_id = $user->id;
+
+        // Set the Syrian timezone using Carbon
+        $bill->created_at = Carbon::now('Asia/Damascus');
+
         $bill->save();
+
+        // Deactivate the cart
+        $cart->active = false;
+        $cart->save();
 
         return response()->json(
             [
                 "success" => true,
                 "statusCode" => 201,
                 "error" => null,
-                "result" => $bill
+                "result" => 'Bill created successfully',
             ]
         );
     }
@@ -212,7 +247,7 @@ class BillController extends Controller
                 'success' => true,
                 "statusCode" => 201,
                 'error' => null,
-                'result' => $bill
+                'result' => "bill cancelled successfully"
             ]
         );
     }

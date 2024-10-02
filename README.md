@@ -13,15 +13,6 @@ Boz is an e-commerce store application designed to enhance user experience throu
 - **Admin dashboard** for streamlined management with secure access for user roles.
 - **Policy-based authorization** for secure management of actions and data.
 
-## Getting Started
-
-Clone the repository and set up the environment:
-
-``bash
-git clone https://github.com/yourusername/boz-ecommerce.git
-cd boz-ecommerce
-composer install
-
 ## Contributing
 
 Contributions are welcome! 
